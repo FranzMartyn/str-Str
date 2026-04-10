@@ -1,5 +1,6 @@
 #include<iostream>
 #include "src/str.cpp"
+#include "lib/catch_amalgamated.hpp"
 
 int main() {
 	str::Str a{"thing"};
@@ -12,5 +13,19 @@ int main() {
 	std::cout << "at index " << a[11] << '\n';
 	a += "Whatever";
 	std::cout << a.unwrap() << '\n';
-	//std::cout << "substring, at 7, len=3: " << str::Str::substring(a.unpack(), 7, 3) << '\n';
+	std::cout << "substring, at 7, len=3: " << str::Str::substring(a.unpack(), 7, 3) << '\n';
 }
+
+// TODO:
+// - Make the test run
+// - Write more tests
+
+TEST_CASE("All Constructors should create the same result") {
+	REQUIRE( str::Str().equals(str::Str("", 0)) );
+
+	char char_array_of_size_1[1] {'s'};
+	REQUIRE( str::Str('s').equals(str::Str(char_array_of_size_1, 1)) );
+
+	REQUIRE( str::Str(str::Str("some string", 11)).equals(str::Str("some string")) );
+}
+

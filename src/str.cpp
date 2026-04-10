@@ -5,10 +5,10 @@
 
 // Nebenziel: Diese Klasse frei von Abhängigkeiten zu bekommen
 
-/* Notiz [1]: 
- * Weil es schwierig ist die länge eines char pointers herauszufinden, habe ich diese Funktionen
- * fallen gelassen.
- *  Grund: Es kann sein, dass ein Nullterminator am Anfang oder mitten im string ist.
+/* Notiz 
+ * Weil es schwierig ist die länge eines char pointers herauszufinden, werden templates benutzt,
+ * um zumindestens string literals benutzen zu können
+ * Grund: Es kann sein, dass ein Nullterminator am Anfang oder mitten im string ist.
  */
 
 namespace str {
@@ -48,6 +48,7 @@ public:
 		} 
 
 		// Claude told me that I can use a template for string literals
+		// This makes `Str() += "string literal"` possible
 		template<unsigned long long LENGTH>
 		Str(const char (&string)[LENGTH]) {
 			data = new char[LENGTH - 1];
@@ -69,7 +70,6 @@ public:
 		    delete[] data;
 		}
 
-
 	
 		void append(char c) {
 			operator+=(c);
@@ -88,6 +88,11 @@ public:
 			++this->size;
 			++this->length;
 		 }
+
+		template<unsigned long long LENGTH>
+		void append(const char (&string)[LENGTH]) {
+			append(string, LENGTH);
+		}
 	
 		void append(Str string) {
 			operator+=(string);
@@ -142,10 +147,14 @@ public:
 			}
 		}
 
+		template<unsigned long long LENGTH>
+		void insert(const char (&string)[LENGTH], unsigned long long index_at) {
+			insert(string, LENGTH, index_at);
+		}
+
 		void insert(const char *string, unsigned long long length, unsigned long long index_at) {
 			char *old = this->data;
 			this->data = new char[this->size+length];
-			std::cout << "this->size+length == " << this->size+length << '\n';
 			int offset = 0;
 			for (int i = 0; i < this->size+1; ++i) {
 				if (i == index_at) {
@@ -160,7 +169,7 @@ public:
 				std::cout << "this->data == " << this->data << "| i = " << i << "; i+offset=" << i+offset << '\n';
 			}
 			this->size += length;
-			this->length = size;
+			this->length = this->size;
 		}
 	
 		void insert(Str string, unsigned long long index_at) {
@@ -176,7 +185,7 @@ public:
 				}
 				data[i+offset] = old[i];
 			}
-			this->size += length;
+			this->size += string.size;
 			this->length = size;
 		}
 	
@@ -197,7 +206,15 @@ public:
 		Str substring(unsigned long long start_index, unsigned long long length) {
 			return Str(substring(*this, start_index, length));
 		}
+
+		bool equals(char *string, unsigned long long length) {
+			return array_equals(this->data, this->size, string, length);
+		}
 	
+		bool equals(Str string) {
+			return operator==(string);
+		}
+		
 		void replace(char to_replace, char to_replace_with) {
 			for (int i = 0; i < size; ++i) {
 				if (data[i] == to_replace) {
@@ -205,14 +222,11 @@ public:
 				}
 			}
 		}
-		
-		// Dropped because [1]
-		// void replace(char *to_replace, char *to_replace_with) {
-		// 	for (int i = 0; i < size; ++i) {
-		// 		if (substring(to_replace, i, get_len(to_replace)) == substring(data, i, to_replace)) {
-		// 		}
-		// 	}
-		// }
+
+		template<unsigned long long STRING_LENGTH_1, unsigned long long STRING_LENGTH_2>
+		void replace(const char (&to_replace)[STRING_LENGTH_1], const char (&to_replace_with)[STRING_LENGTH_2]) {
+			// TODO
+		}
 	
 		void replace(Str to_replace, Str to_replace_with) {
 			for (int i = 0; i < size; ++i) {
@@ -232,21 +246,19 @@ public:
 			return Str(temp, size+1);
 		}
 	
-		// Dropped because [1]
-		//Str operator+(char *string) {
-		//	long long string_length = get_len(string);
-		//	char *temp = new char[this->size + string_length];
+		template<unsigned long long LENGTH>
+		Str operator+(const char (&string)[LENGTH]) {
+			char *temp = new char[this->size + LENGTH];
 	
-		//	// Eigentlich wäre hier memcpy() gut, aber ich will diese Klasse Abhängigkeitsfrei halten...
-		//	for (int i = 0; i < size; ++i) {
-		//		temp[i] = this->data[i];
-		//	}
-		//	for (int i = 0; i <= get_len(string); ++i) {
-		//		temp[this->size+i] = string[i];
-		//	}
-		//	return Str(temp);
-		//}
-		// Users have to make the char array a Str object and then use operator+()
+			// Eigentlich wäre hier memcpy() gut, aber ich will diese Klasse Abhängigkeitsfrei halten...
+			for (int i = 0; i < size; ++i) {
+				temp[i] = this->data[i];
+			}
+			for (int i = 0; i <= LENGTH; ++i) {
+				temp[this->size+i] = string[i];
+			}
+			return Str(temp, this->size+LENGTH);
+		}
 	
 		Str operator+(Str string) {
 			char *temp = new char[this->size + string.size];
@@ -269,31 +281,28 @@ public:
 			for (i = 0; i < size; ++i) {
 				this->data[i] = temp[i];
 			}
+
 			this->data[i] = c;
-			++this->size;
-			++this->length;
+			++(this->size);
+			++(this->length);
 		}
 	
-		// Dropped because of [1]
-		// void operator+=(char *string) {
-		// 	char *temp = data;
-		// 	long long string_length = get_len(string);
-		// 	this->data = new char[this->size + string_length];
+		template<unsigned long long LENGTH>
+		void operator+=(const char (&string)[LENGTH]) {
+			char *temp = data;
+			this->data = new char[this->size + LENGTH];
 	
-		// 	// Eigentlich wäre hier memcpy() gut, aber ich will diese Klasse Abhängigkeitsfrei halten...
-		// 	for (int i = 0; i < size; ++i) {
-		// 		this->data[i] = temp[i];
-		// 	}
-		// 	for (int i = 0; i <= get_len(string); ++i) {
-		// 		this->data[this->size+i] = string[i];
-		// 	}
-		// 	size = get_len(data);
-		// 	length = size;
-		// }
-		// Users have to use append(char *string, unsigned long long length) insted
+			// Eigentlich wäre hier memcpy() gut, aber ich will diese Klasse Abhängigkeitsfrei halten...
+			for (int i = 0; i < size; ++i) {
+				this->data[i] = temp[i];
+			}
+			for (int i = 0; i <= LENGTH; ++i) {
+				this->data[this->size+i] = string[i];
+			}
+			this->size += LENGTH;
+			this->length = this->size;
+		}
 	
-		// This, somehow, also covers string literals...
-		// TODO: Let Claude explain why this works
 		void operator+=(Str string) {
 			char *temp = data;
 			this->data = new char[this->size + string.size];
@@ -313,14 +322,13 @@ public:
 		char operator[](unsigned long long index) {
 			return data[index];
 		}
-	
-		// Dropped because [1]
-		// void operator=(char *string) {
-		// 	data = string;
-		// 	size = get_len(string);
-		// 	length = size;
-		// }
-		// Users have to create a new object instead
+
+		template<unsigned long long LENGTH>
+		bool operator=(const char (&string)[LENGTH]) {
+			data = string;
+			size = LENGTH;
+			length = LENGTH;
+		}
 	
 		void operator=(Str string) {
 			this->data = string.data;
@@ -329,33 +337,30 @@ public:
 		}
 	
 		bool operator==(char c) {
-			if (size > 1) {
+			if (size != 1) {
 				return false;
 			}
 			return data[0] == c;
 		}
-	
-		// Dropped because [1]
-		// bool operator==(char *string) {
-		// 	return array_equals(data, string);
-		// }
-		// Replaced with this equals method
-		bool equals(char *string, unsigned long long length) {
-			return array_equals(this->data, this->size, string, length);
+
+		bool operator==(Str right) {
+			return array_equals(this->data, this->size, right.data, right.size);
 		}
-	
-		bool equals(Str string) {
-			return operator==(string);
+
+		// For string constants
+		template<unsigned long long LENGTH>
+		bool operator==(const char (&right)[LENGTH]) {
+			return array_equals(this->data, this->size, right.data, LENGTH);
 		}
-	
-		bool operator==(Str string) {
-			return array_equals(this->data, this->size, string.data, string.size);
+
+		bool operator!=(char c) {
+			return data[0] != c;
 		}
-	
-		// Dropped because [1]
-		//bool operator!=(char* string) {
-		//	return !operator==(string);
-		//}
+
+		template<unsigned long long LENGTH>
+		bool operator!=(const char (&string)[LENGTH]) {
+			return !operator==(string);
+		}
 		
 		bool operator!=(Str string) {
 			return !operator==(string);
@@ -363,7 +368,7 @@ public:
 	
 		// if (Str("abc")) 
 		operator bool() {
-			return size > 1;
+			return size >= 1;
 		}
 	
 		// Str("abc").times(3).c_str() == "abcabcabc"
@@ -382,9 +387,8 @@ public:
 		}
 	
 private:
-	
 		char *data;
-	
+
 		static bool array_equals(char *arr1, unsigned long long arr1_size, char *arr2, unsigned long long arr2_size) {
 			if (arr1_size != arr2_size) {
 				return false;
