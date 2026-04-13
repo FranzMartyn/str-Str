@@ -1,13 +1,22 @@
 
 # Detect OS
 ifeq ($(OS), Windows_NT)
-    TARGET = test.exe
+    TEST_TARGET = test.exe
 else
-    TARGET = test.out
+    TEST_TARGET = ./test.out
 endif
 
-# TODO: Add catch testing library
+ifeq ($(OS), Windows_NT)
+	MAIN_TARGET = main.exe
+else
+	MAIN_TARGET = ./main.out
+endif
+
+
 build:
-	g++ test.cpp -o $(TARGET)
-run:
-	./$(TARGET)
+	g++ src/str.cpp main.cpp -o $(MAIN_TARGET)
+run: 
+	$(TARGET)
+test:
+	g++ test.cpp lib/catch_amalgamated.cpp -o $(TEST_TARGET)
+	./$(TEST_TARGET) Constructors
